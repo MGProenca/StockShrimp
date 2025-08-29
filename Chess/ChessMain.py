@@ -1,5 +1,7 @@
 import pygame as p
 import ChessEngine
+import ChessAI
+
 
 WIDTH = HEIGHT = 512
 DIMENSION = 8
@@ -52,7 +54,7 @@ def draw_gamestate(screen, gs, valid_moves, sq_selected):
 def animate_move(move, screen, board, clock):
     dr = move.endRow - move.startRow
     dc = move.endCol - move.startCol
-    framesPerSquare = 1  # Number of frames to animate each square
+    framesPerSquare = 5  # Number of frames to animate each square
     frameCount = (abs(dr) + abs(dc)) * framesPerSquare
     for frame in range(frameCount + 1):
         r, c = (move.startRow + dr*frame/frameCount, move.startCol+dc * frame/frameCount)
@@ -95,12 +97,16 @@ def main():
     sq_selected = ()  # No square is selected initially
     player_clicks = []  # Keep track of player clicks (two tuples)
     
+    playerOne = True  # True if human playing white, False if AI playing white
+    playerTwo = True  # True if human playing black, False if AI playing black
+
     while running:
+        humanTurn = (gs.whiteToMove and playerOne) or (not gs.whiteToMove and playerTwo)
         for e in p.event.get():
             if e.type == p.QUIT:
                 running = False
             elif e.type == p.MOUSEBUTTONDOWN:
-                if not game_over:  # Only allow clicks if the game is not over
+                if not game_over and humanTurn:  # Only allow clicks if the game is not over
                     location = p.mouse.get_pos()
                     col = location[0] // SQ_SIZE
                     row = location[1] // SQ_SIZE
@@ -116,8 +122,6 @@ def main():
                         print(f"Move made: {move.getChessNotation()}")
                         for i in range(len(valid_moves)):
                             if move == valid_moves[i]:
-                                print('AAA: ', move)
-                                print('BBB: ', valid_moves[i])
                                 gs.makeMove(valid_moves[i])  # Make the move in the game state
                                 move_made = True
                                 animate = True
@@ -138,7 +142,13 @@ def main():
                     player_clicks = []
                     move_made = False
                     animate = False
-                    
+
+        if not game_over and not humanTurn: # AI turn
+            best_move = ChessAI.findBestMove(gs, gs.whiteToMove, depth = 3)
+            if best_move is not None:
+                gs.makeMove(best_move)
+                move_made = True
+                animate = True
             
 
         if move_made: # only calcualtes possible moves when clicks

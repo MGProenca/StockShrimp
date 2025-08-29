@@ -183,15 +183,15 @@ class GameState:
         if move.pieceCaptured == 'wR':
             if move.endRow == 7:
                 if move.endCol == 0:
-                    self.currentCastlingRight.wqs = False
+                    self.currentCastleRights.wqs = False
                 elif move.endCol == 7:
-                    self.currentCastlingRight.wks = False
+                    self.currentCastleRights.wks = False
         elif move.pieceCaptured == 'bR':
             if move.endRow == 0:
                 if move.endCol == 0:
-                    self.currentCastlingRight.bqs = False
+                    self.currentCastleRights.bqs = False
                 elif move.endCol == 7:
-                    self.currentCastlingRight.bks = False
+                    self.currentCastleRights.bks = False
 
     def checkForPinsAndChecks(self):
         pins = []
