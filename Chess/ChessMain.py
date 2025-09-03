@@ -1,7 +1,11 @@
 import pygame as p
 import ChessEngine
 import ChessAI
-
+import random
+import AlphaShrimp
+import numpy as np
+np.random.seed(2)
+# 0 - 40
 
 WIDTH = HEIGHT = 512
 DIMENSION = 8
@@ -79,8 +83,7 @@ def drawText(text, screen):
     p.display.flip()
     # p.time.wait(2000)  # Wait for 2 seconds before continuing
 
-
-def main():
+def pygame_main():
     p.init()
     screen = p.display.set_mode((WIDTH, HEIGHT))
     clock = p.time.Clock()
@@ -119,12 +122,13 @@ def main():
                         player_clicks.append(sq_selected)
                     if len(player_clicks) == 2:  # If two squares are selected
                         move = ChessEngine.Move(player_clicks[0], player_clicks[1], gs.board)
-                        print(f"Move made: {move.getChessNotation()}")
+                        print(f"Move created: {move.getChessNotation()}")
                         for i in range(len(valid_moves)):
                             if move == valid_moves[i]:
                                 gs.makeMove(valid_moves[i])  # Make the move in the game state
+                                print(f"Move made: {move.getChessNotation()}")
                                 move_made = True
-                                animate = True
+                                animate = False
                                 sq_selected = () # reset clicks
                                 player_clicks = []
                         if not move_made:  # If the move was not valid
@@ -144,11 +148,18 @@ def main():
                     animate = False
 
         if not game_over and not humanTurn: # AI turn
-            best_move = ChessAI.findBestMove(gs, gs.whiteToMove, depth = 3)
+            MCTS = AlphaShrimp.MCTS(gs, {'C': 1.4, 'num_searches': 1000})
+            possible_actions, action_probs = MCTS.search()
+            print(possible_actions)
+            print(action_probs)
+            # best_move = ChessAI.findBestMove(gs, gs.whiteToMove, depth = 3)
+            best_move = random.choice(valid_moves) if valid_moves else None
+            print(f"AI Move created: {best_move.getChessNotation()}")
             if best_move is not None:
                 gs.makeMove(best_move)
+                print(f"AI Move made: {best_move.getChessNotation()}")
                 move_made = True
-                animate = True
+                animate = False
             
 
         if move_made: # only calcualtes possible moves when clicks
@@ -156,6 +167,7 @@ def main():
             if animate:
                 animate_move(gs.moveLog[-1], screen, gs.board, clock)
             valid_moves = gs.getValidMoves()
+            print(valid_moves)
             move_made = False
             animate = False
 
@@ -174,7 +186,65 @@ def main():
 
         clock.tick(MAX_FPS)
         p.display.flip()  # Update the display
+
+def print_board(board):
+    for row in board:
+        print(' '.join(row))
+    print()
+
+def main():
+    gs = ChessEngine.GameState()
+    game_over = False
+    playerOne = True  # True if human playing white, False if AI playing white
+    playerTwo = False
     
+    while not game_over:
+        humanTurn = (gs.whiteToMove and playerOne) or (not gs.whiteToMove and playerTwo)
+        print_board(gs.board)
+        valid_moves = gs.getValidMoves()
+        print("Valid moves:", [move.getChessNotation() for move in valid_moves])
+
+        if humanTurn:
+            if gs.whiteToMove:
+                move_input = input("White to move (e.g. e2e4): ")
+            else:
+                move_input = input("Black to move (e.g. e7e5): ")
+
+            move = None
+            for m in valid_moves:
+                if m.getChessNotation() == move_input:
+                    move = m
+                    break
+
+            if move:
+                gs.makeMove(move)
+            else:
+                print("Invalid move, try again.")
+                continue
+        else:
+            # AI plays if playerOne or playerTwo is False
+            # best_move = random.choice(valid_moves) if valid_moves else None
+            MCTS = AlphaShrimp.MCTS(gs, {'C': 1.4, 'num_searches': 1000})
+            possible_actions, action_probs = MCTS.search()
+            print(possible_actions)
+            print(action_probs)
+            best_move = possible_actions[np.argmax(action_probs)] if possible_actions else None
+            print(f"AI Move: {best_move.getChessNotation() if best_move else 'None'}")
+            if best_move:
+                gs.makeMove(best_move)
+            else:
+                print("No valid moves for AI.")
+                game_over = True
+                
+        gs.getValidMoves()
+        if gs.checkmate:
+            print("Checkmate!")
+            game_over = True
+        elif gs.stalemate:
+            print("Stalemate!")
+            game_over = True
+
 
 if __name__ == "__main__":
     main()
+    # pygame_main()

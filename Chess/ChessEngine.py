@@ -34,10 +34,10 @@ class Move:
         if self.enpassantMove:
             self.pieceCaptured = 'bp' if self.pieceMoved == 'wp' else 'wp'
 
-        print(
-            f"Move created: {self.startRow, self.startCol} to {self.endRow, self.endCol}")
-        print(
-            f'flag values, enpassantMove: {self.enpassantMove}, pawnPromotion: {self.pawnPromotion}, castleMove: {self.castleMove}')
+        # print(
+        #     f"Move created: {self.startRow, self.startCol} to {self.endRow, self.endCol}")
+        # print(
+        #     f'flag values, enpassantMove: {self.enpassantMove}, pawnPromotion: {self.pawnPromotion}, castleMove: {self.castleMove}')
 
     def encodeMove(self):
         start_index = self.startRow * 8 + self.startCol
@@ -71,20 +71,46 @@ class Move:
 
 class GameState:
     def __init__(self):
+        # self.board = [
+        #     ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
+        #     ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
+        #     ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR']
+        # ]
         self.board = [
-            ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
-            ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
+            ['--', 'bR', '--', 'bK', '--', '--', '--', 'bR'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
             ['--', '--', '--', '--', '--', '--', '--', '--'],
-            ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
-            ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR']
+            ['--', '--', '--', '--', '--', '--', '--', '--'],
+            ['--', '--', '--', '--', '--', '--', '--', '--'],
+            ['--', '--', '--', '--', 'wK', '--', '--', '--']
         ]
+        # self.board = [
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['--', '--', '--', '--', '--', '--', '--', '--'],
+        #     ['--', 'wp', '--', '--', '--', '--', 'bp', '--'],
+        #     ['--', '--', '--', '--', '--', 'bK', '--', 'bp'],
+        #     ['--', '--', '--', '--', '--', '--', '--', 'wK']
+        # ]
         self.whiteToMove = True  # True if it's white's turn, False if it's
         self.moveLog = []
         self.whiteKingLocation = (7, 4)  # Initial position of the white king
         self.blackKingLocation = (0, 4)  # Initial position of the black
+        for r in range(1, len(self.board[0])):
+            for c in range(1, len(self.board[1])):
+                if self.board[r][c] == 'wK':
+                    self.whiteKingLocation = (r, c)
+                elif self.board[r][c] == 'bK':
+                    self.blackKingLocation = (r, c)
         self.checkmate = False  # True if the game is in checkmate
         self.stalemate = False  # True if the game is in stalemate
         self.inCheck = False  # True if the current player is in check
@@ -92,12 +118,15 @@ class GameState:
         self.checks = []  # List of checks on the current player
         self.enpassantPossible = ()  # Coordinates for where en passant capture is possible
         # White king side, white queen side, black king side, black queen side
-        self.currentCastleRights = CastleRights(True, True, True, True)
+        
+        self.currentCastleRights = CastleRights(False, False, False, False)
+        # self.currentCastleRights = CastleRights(True, True, True, True)
         # self.caslteRightsLog = [self.currentCastleRights]
         self.castleRightsLog = [CastleRights(
             self.currentCastleRights.wks, self.currentCastleRights.wqs,
             # List to keep track of castle rights after each move
             self.currentCastleRights.bks, self.currentCastleRights.bqs)]
+        self.drawMoveCounter = 0  # Counter for 50-move rule
 
     def makeMove(self, move: Move):
         self.board[move.startRow][move.startCol] = '--'
@@ -123,9 +152,9 @@ class GameState:
             print(f"En passant possible at: {self.enpassantPossible}")
         else:
             self.enpassantPossible = ()
-            print('Resetting en passant possible')
+            # print('Resetting en passant possible')
         if move.enpassantMove:
-            print(f"En passant move: {move.endRow}, {move.endCol}")
+            # print(f"En passant move: {move.endRow}, {move.endCol}")
             # Remove the captured pawn
             self.board[move.startRow][move.endCol] = '--'
 
@@ -150,6 +179,11 @@ class GameState:
             self.currentCastleRights.wks, self.currentCastleRights.wqs,
             # List to keep track of castle rights after each move
             self.currentCastleRights.bks, self.currentCastleRights.bqs))
+        
+        # 50-move rule UNDO NOT IMPLEMENTED
+        self.drawMoveCounter += 1
+        if move.pieceMoved[1] == 'p' or move.pieceCaptured != '--':
+            self.drawMoveCounter = 0
 
     def undoMove(self):
         if len(self.moveLog) != 0:
@@ -188,6 +222,10 @@ class GameState:
             # Castlerights
             self.castleRightsLog.pop()
             self.currentCastleRights = copy.deepcopy(self.castleRightsLog[-1])
+
+            # 50-move rule
+            self.drawMoveCounter -= 1
+
 
     def updateCastleRights(self, move):
         if move.pieceMoved == 'wK':
@@ -328,10 +366,14 @@ class GameState:
         else:  # Not in check, get all possible moves
             moves = self.getAllPossibleMoves()
 
+        # Updates engame flags
         if len(moves) == 0:
             if self.inCheck:
                 self.checkmate = True
                 return moves
+            self.stalemate = True
+        
+        if self.drawMoveCounter >= 100:
             self.stalemate = True
 
         return moves
@@ -585,3 +627,14 @@ class GameState:
         }
 
         return [[piece_to_int[square] for square in row] for row in self.board]
+
+    def getValueAndTerminated(self):
+        self.getValidMoves()
+        if self.checkmate:
+            return 1, True
+        elif self.stalemate:
+            return 0, True
+        return 0, False 
+    
+    def getOpponentValue(self, value):
+        return - value
